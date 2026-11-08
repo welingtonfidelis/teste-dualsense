@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teste do DualSense</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --text: #1b1f24; --muted: #5d6672; --line: #dde1e6;
+    --accent: #2d6cdf; --accent-text: #ffffff; --soft: #e9eef7;
+    --ok: #1d8049; --warn: #a86200; --bad: #bf3434;
+    --bar: #2d6cdf; --bar-bg: #e6eaf0; --max: #bf3434;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101317; --card: #191e24; --text: #e7ebf0; --muted: #9aa4b0; --line: #2a3139;
+      --accent: #5d8ff0; --accent-text: #0b0d10; --soft: #222a35;
+      --ok: #45c07a; --warn: #e3a440; --bad: #ee6f6f;
+      --bar: #5d8ff0; --bar-bg: #2a3139; --max: #ee6f6f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 0 0 8px; }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
+  p { margin: 0 0 10px; }
+  .muted { color: var(--muted); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; margin-top: 16px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button {
+    font: inherit; border: 1px solid var(--line); background: var(--soft); color: var(--text);
+    border-radius: 8px; padding: 8px 14px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button.active { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .status { font-weight: 600; }
+  .status.ok { color: var(--ok); } .status.warn { color: var(--warn); } .status.bad { color: var(--bad); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+  .meter { position: relative; height: 26px; background: var(--bar-bg); border-radius: 6px; overflow: hidden; }
+  .meter .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--bar); }
+  .meter .peak { position: absolute; top: 0; bottom: 0; width: 3px; left: -3px; background: var(--max); }
+  .meter .label {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-variant-numeric: tabular-nums; font-size: .9rem; font-weight: 600;
+  }
+  .small { font-size: .88rem; }
+  .effects { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-top: 10px; }
+  .effects button { text-align: left; }
+  .effects button small { display: block; color: var(--muted); font-size: .8rem; }
+  label.inline { display: inline-flex; gap: 6px; align-items: center; }
+  input[type=range] { width: 220px; max-width: 100%; }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  .note { border-left: 3px solid var(--warn); padding: 8px 12px; background: var(--soft); border-radius: 6px; }
+  details summary { cursor: pointer; color: var(--muted); }
+  code { font-size: .88em; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Teste do DualSense</h1>
+  <p class="muted">Testa os dois motores de vibração e os gatilhos adaptativos, um de cada vez. Funciona no Chrome ou no Edge do computador.</p>
+
+  <div id="nohid" class="card note hidden">
+    <strong>Este navegador não acessa o controle.</strong>
+    Abra esta página no Chrome ou no Edge do computador. Safari, Firefox e o navegador do celular não têm esse acesso.
+  </div>
+
+  <section class="card">
+    <h2>1. Conectar</h2>
+    <p>Ligue o controle no computador pelo cabo USB (o mais confiável para o teste) ou pelo Bluetooth. Depois clique no botão e escolha o DualSense na lista.</p>
+    <div class="row">
+      <button id="connect" class="primary">Conectar controle</button>
+      <button id="disconnect" class="hidden">Desconectar</button>
+      <span id="status" class="status">Nenhum controle conectado</span>
+    </div>
+    <p id="details" class="muted small" style="margin-top:8px"></p>
+  </section>
+
+  <section class="card" id="rumble-card">
+    <h2>2. Vibração</h2>
+    <p>O DualSense tem um motor de vibração em cada lado. O <strong>esquerdo</strong> é o forte, de vibração grave. O <strong>direito</strong> é o fraco, de vibração mais fina e aguda. Cada teste dura 3 segundos.</p>
+    <div class="row" style="margin-bottom:10px">
+      <label class="inline">Força <input id="rumble-level" type="range" min="5" max="100" value="100"> <span id="rumble-level-out">100%</span></label>
+    </div>
+    <div class="row">
+      <button data-rumble="left" disabled>Só o esquerdo</button>
+      <button data-rumble="right" disabled>Só o direito</button>
+      <button data-rumble="both" disabled>Os dois</button>
+      <button data-rumble="sweep" disabled>Subir aos poucos (cada lado)</button>
+      <button data-rumble="stop" disabled>Parar</button>
+    </div>
+    <p id="rumble-now" class="muted small" style="margin-top:8px">Parado.</p>
+  </section>
+
+  <section class="card" id="trigger-card">
+    <h2>3. Gatilhos</h2>
+    <p>Aperte o L2 e o R2 até o fim. A barra mostra quanto o controle está lendo, e a linha vermelha marca o máximo que chegou. Apertado até o fim, tem que chegar em 255.</p>
+    <div class="grid2">
+      <div>
+        <h3>L2 (esquerdo)</h3>
+        <div class="meter"><div class="fill" id="l2-fill"></div><div class="peak" id="l2-peak"></div><div class="label" id="l2-label">0</div></div>
+        <p class="small muted" id="l2-info" style="margin-top:6px">Máximo: 0</p>
+      </div>
+      <div>
+        <h3>R2 (direito)</h3>
+        <div class="meter"><div class="fill" id="r2-fill"></div><div class="peak" id="r2-peak"></div><div class="label" id="r2-label">0</div></div>
+        <p class="small muted" id="r2-info" style="margin-top:6px">Máximo: 0</p>
+      </div>
+    </div>
+    <div class="row" style="margin-top:4px">
+      <button id="reset-peaks" disabled>Zerar os máximos</button>
+    </div>
+
+    <h3 style="margin-top:18px">Efeito nos gatilhos</h3>
+    <div class="row">
+      <span class="small muted">Aplicar em:</span>
+      <button data-target="both" class="active" disabled>Os dois</button>
+      <button data-target="left" disabled>Só L2</button>
+      <button data-target="right" disabled>Só R2</button>
+    </div>
+    <div class="effects">
+      <button data-effect="off" disabled>Sem efeito<small>O gatilho fica solto, como num controle comum.</small></button>
+      <button data-effect="light" disabled>Resistência leve<small>Fica um pouco mais duro o curso todo.</small></button>
+      <button data-effect="strong" disabled>Resistência forte<small>Bem duro do começo ao fim.</small></button>
+      <button data-effect="wall" disabled>Parede no meio<small>Solto até a metade, depois trava forte.</small></button>
+      <button data-effect="weapon" disabled>Clique de arma<small>Endurece e solta de repente, com um estalo.</small></button>
+      <button data-effect="vibrate" disabled>Vibração no gatilho<small>O próprio gatilho treme enquanto você aperta.</small></button>
+    </div>
+    <p id="trigger-now" class="muted small" style="margin-top:8px">Efeito atual: sem efeito.</p>
+    <details style="margin-top:8px">
+      <summary>Leitura técnica do controle (experimental)</summary>
+      <p class="small muted" style="margin-top:6px">Bytes que o controle manda sobre o motor de cada gatilho. Servem para comparar um lado com o outro: com o mesmo efeito, os dois lados deveriam mostrar valores parecidos.</p>
+      <p class="small"><code id="raw-trigger">—</code></p>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>4. Barra de luz</h2>
+    <p>Muda a cor da luz do controle. Serve também para conferir que os comandos estão chegando nele. No Bluetooth, a luz pode levar uns 10 segundos para obedecer depois de conectar.</p>
+    <div class="row">
+      <input id="color" type="color" value="#20c060" disabled>
+      <button id="light-off" disabled>Apagar</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Como saber se tem defeito</h2>
+    <ul>
+      <li><strong>Compare os lados.</strong> O teste com "Os dois" nos gatilhos ajuda: um lado bem mais fraco, sem resistência ou fazendo barulho de engrenagem raspando indica defeito nesse lado.</li>
+      <li><strong>Vibração:</strong> o esquerdo deve tremer forte e grave, o direito mais fino. Se um deles não vibra, vibra fraco mesmo na força máxima ou chacoalha solto, o motor desse lado está com problema.</li>
+      <li><strong>"Subir aos poucos":</strong> a vibração deve crescer sem falhas. Se some e volta ou trava num ponto, é defeito.</li>
+      <li><strong>Pressão:</strong> se o gatilho não chega em 255 apertado até o fim, ou a barra pula em vez de subir suave, o sensor do gatilho está com problema.</li>
+      <li><strong>Resistência:</strong> com "Resistência forte" deve ser difícil apertar. Se um lado continua solto, o motor ou a engrenagem desse gatilho está com defeito.</li>
+      <li>Se nada funciona nem a luz muda, o problema é a conexão, não o controle: tente pelo cabo.</li>
+    </ul>
+    <p class="muted small" style="margin-top:10px">Ao fechar ou trocar de aba, a vibração e os efeitos dos gatilhos são desligados.</p>
+  </section>
+</main>
+
+<script id="ds-protocol">
+// DualSense output/input report helpers. Layouts follow the Linux hid-playstation driver and
+// SDL's HIDAPI PS5 driver; trigger effects follow the encoding used by the KytyPS5 fork.
+(function (root) {
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  // zlib-compatible: crc32(b, crc32(a)) === crc32(a + b)
+  function crc32(bytes, crc = 0) {
+    let c = (~crc) >>> 0;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (~c) >>> 0;
+  }
+
+  function effectOff() {
+    const e = new Uint8Array(11);
+    e[0] = 0x05;
+    return e;
+  }
+
+  // strengths: 10 positions, 0 (none) to 8 (max). type 0x21 = feedback, 0x26 = vibration.
+  function effectZones(type, strengths, frequency = 0) {
+    const e = new Uint8Array(11);
+    let active = 0, packed = 0;
+    for (let i = 0; i < 10; i++) {
+      const s = strengths[i];
+      if (s < 0 || s > 8) throw new RangeError('strength 0..8');
+      if (s > 0) {
+        active |= 1 << i;
+        packed |= (s - 1) << (3 * i);
+      }
+    }
+    packed >>>= 0;
+    e[0] = active !== 0 && (type !== 0x26 || frequency !== 0) ? type : 0x05;
+    e[1] = active & 0xff;
+    e[2] = (active >> 8) & 0xff;
+    e[3] = packed & 0xff;
+    e[4] = (packed >>> 8) & 0xff;
+    e[5] = (packed >>> 16) & 0xff;
+    e[6] = (packed >>> 24) & 0xff;
+    e[9] = frequency & 0xff;
+    return e;
+  }
+
+  function fromPosition(position, strength) {
+    const s = new Array(10).fill(0);
+    for (let i = position; i < 10; i++) s[i] = strength;
+    return s;
+  }
+
+  const effectFeedback = (position, strength) => effectZones(0x21, fromPosition(position, strength));
+  const effectVibration = (position, amplitude, frequency) =>
+    effectZones(0x26, fromPosition(position, amplitude), frequency);
+
+  // start 2..7, end start+1..8, strength 1..8
+  function effectWeapon(start, end, strength) {
+    const e = new Uint8Array(11);
+    const zones = (1 << start) | (1 << end);
+    e[0] = 0x25;
+    e[1] = zones & 0xff;
+    e[2] = (zones >> 8) & 0xff;
+    e[3] = strength - 1;
+    return e;
+  }
+
+  // The 47-byte block shared by the USB (0x02) and Bluetooth (0x31) output reports.
+  // s: { motorLeft, motorRight, vibV2, triggers (bool: send trigger effects), left, right,
+  //      led: null | [r, g, b] }
+  function commonBlock(s) {
+    const c = new Uint8Array(47);
+    c[0] = 0x02 | (s.vibV2 ? 0 : 0x01);   // rumble emulation on the haptic actuators
+    if (s.triggers) c[0] |= 0x04 | 0x08;   // right and left trigger effects
+    if (s.led) c[1] = 0x04 | 0x10;          // light bar colour + player lights
+    c[2] = s.motorRight & 0xff;             // right: weak / high frequency
+    c[3] = s.motorLeft & 0xff;              // left: strong / low frequency
+    if (s.triggers) {
+      c.set(s.right, 10);
+      c.set(s.left, 21);
+    }
+    if (s.vibV2) c[38] = 0x04;              // improved rumble emulation (newer firmware)
+    if (s.led) {
+      c[43] = 0x04;                         // centre player light
+      c[44] = s.led[0]; c[45] = s.led[1]; c[46] = s.led[2];
+    }
+    return c;
+  }
+
+  // Returns { id, data } for WebHID sendReport (data without the report ID).
+  function outputReport(transport, common) {
+    if (transport === 'usb') return { id: 0x02, data: common };
+    const d = new Uint8Array(77);
+    d[0] = 0x02;                            // header used by SDL for effects packets
+    d.set(common, 1);
+    const crc = crc32(d.subarray(0, 73), crc32(Uint8Array.of(0xA2, 0x31)));
+    d[73] = crc & 0xff;
+    d[74] = (crc >>> 8) & 0xff;
+    d[75] = (crc >>> 16) & 0xff;
+    d[76] = (crc >>> 24) & 0xff;
+    return { id: 0x31, data: d };
+  }
+
+  // reportId + DataView without the ID, as WebHID delivers them.
+  function parseInput(reportId, dv) {
+    let o = -1;
+    if (reportId === 0x01 && dv.byteLength >= 63) o = 0;        // USB
+    else if (reportId === 0x31 && dv.byteLength >= 64) o = 1;   // Bluetooth, full report
+    if (o < 0) {
+      if (reportId === 0x01 && dv.byteLength >= 9) {              // Bluetooth, basic report
+        return { basic: true, l2: dv.getUint8(7), r2: dv.getUint8(8) };
+      }
+      return null;
+    }
+    const b1 = dv.getUint8(o + 8);
+    const status = dv.getUint8(o + 52);
+    return {
+      basic: false,
+      l2: dv.getUint8(o + 4),
+      r2: dv.getUint8(o + 5),
+      l2Button: (b1 & 0x04) !== 0,
+      r2Button: (b1 & 0x08) !== 0,
+      battery: status & 0x0f,
+      charging: status >> 4,
+      sensorTime: dv.getUint32(o + 27, true),
+      trigRight: dv.getUint8(o + 41),
+      trigLeft: dv.getUint8(o + 42),
+      trigEffect: dv.getUint8(o + 47),
+    };
+  }
+
+  // Firmware info feature report 0x20; WebHID may or may not include the report ID byte.
+  function updateVersion(dv) {
+    const base = dv.getUint8(0) === 0x20 ? 0 : -1;
+    const at = 44 + base;
+    if (dv.byteLength < at + 2) return null;
+    return dv.getUint16(at, true);
+  }
+
+  root.DSProto = {
+    crc32, effectOff, effectZones, effectFeedback, effectVibration, effectWeapon,
+    commonBlock, outputReport, parseInput, updateVersion,
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+<script>
+(function () {
+  const P = window.DSProto;
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+  const state = {
+    device: null, transport: null, vibV2: false,
+    motorLeft: 0, motorRight: 0,
+    left: P.effectOff(), right: P.effectOff(), effectName: 'off',
+    led: [32, 192, 96], target: 'both',
+    peaks: { l2: 0, r2: 0 }, basicReports: false, lastRaw: '',
+  };
+
+  let sendChain = Promise.resolve();
+  let rumbleTimer = null, sweepTimer = null;
+
+  const EFFECTS = {
+    off:     { name: 'sem efeito',          make: () => P.effectOff() },
+    light:   { name: 'resistência leve',    make: () => P.effectFeedback(0, 3) },
+    strong:  { name: 'resistência forte',   make: () => P.effectFeedback(0, 8) },
+    wall:    { name: 'parede no meio',      make: () => P.effectFeedback(5, 8) },
+    weapon:  { name: 'clique de arma',      make: () => P.effectWeapon(2, 6, 8) },
+    vibrate: { name: 'vibração no gatilho', make: () => P.effectVibration(0, 8, 30) },
+  };
+
+  if (!('hid' in navigator)) {
+    $('#nohid').classList.remove('hidden');
+    $('#connect').disabled = true;
+  }
+
+  function setStatus(text, kind) {
+    const el = $('#status');
+    el.textContent = text;
+    el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function setEnabled(on) {
+    $$('[data-rumble],[data-effect],[data-target],#reset-peaks,#color,#light-off')
+      .forEach((b) => { b.disabled = !on; });
+    $('#connect').classList.toggle('hidden', on);
+    $('#disconnect').classList.toggle('hidden', !on);
+  }
+
+  function send(triggers) {
+    const dev = state.device;
+    if (!dev) return Promise.resolve();
+    const common = P.commonBlock({
+      motorLeft: state.motorLeft, motorRight: state.motorRight, vibV2: state.vibV2,
+      triggers, left: state.left, right: state.right, led: state.led,
+    });
+    const rep = P.outputReport(state.transport, common);
+    sendChain = sendChain
+      .then(() => dev.sendReport(rep.id, rep.data))
+      .catch((err) => {
+        console.warn('sendReport', err);
+        setStatus('Erro ao mandar comando: ' + err.message, 'bad');
+      });
+    return sendChain;
+  }
+
+  function stopRumbleTimers() {
+    clearTimeout(rumbleTimer); rumbleTimer = null;
+    clearInterval(sweepTimer); sweepTimer = null;
+  }
+
+  function setRumble(left, right, text) {
+    state.motorLeft = left; state.motorRight = right;
+    $('#rumble-now').textContent = text;
+    return send(false);
+  }
+
+  function level() { return Math.round(+$('#rumble-level').value * 255 / 100); }
+
+  function rumble(kind) {
+    stopRumbleTimers();
+    if (kind === 'stop') return setRumble(0, 0, 'Parado.');
+    const pct = $('#rumble-level').value + '%';
+    if (kind === 'sweep') {
+      const steps = 40, stepMs = 100;
+      let i = 0;
+      setRumble(0, 0, 'Subindo o esquerdo...');
+      sweepTimer = setInterval(() => {
+        i++;
+        if (i <= steps) {
+          const v = Math.round(255 * i / steps);
+          setRumble(v, 0, 'Esquerdo: ' + Math.round(100 * i / steps) + '%');
+        } else if (i <= 2 * steps) {
+          const k = i - steps;
+          const v = Math.round(255 * k / steps);
+          setRumble(0, v, 'Direito: ' + Math.round(100 * k / steps) + '%');
+        } else {
+          stopRumbleTimers();
+          setRumble(0, 0, 'Fim da subida. Parado.');
+        }
+      }, stepMs);
+      return;
+    }
+    const v = level();
+    if (kind === 'left') setRumble(v, 0, 'Vibrando: esquerdo a ' + pct);
+    if (kind === 'right') setRumble(0, v, 'Vibrando: direito a ' + pct);
+    if (kind === 'both') setRumble(v, v, 'Vibrando: os dois a ' + pct);
+    rumbleTimer = setTimeout(() => setRumble(0, 0, 'Parado.'), 3000);
+  }
+
+  function applyEffect(name) {
+    const fx = EFFECTS[name];
+    const t = state.target;
+    if (t === 'both' || t === 'left') state.left = fx.make();
+    if (t === 'both' || t === 'right') state.right = fx.make();
+    if (t === 'left') state.right = P.effectOff();
+    if (t === 'right') state.left = P.effectOff();
+    const where = t === 'both' ? 'nos dois gatilhos' : t === 'left' ? 'só no L2' : 'só no R2';
+    $('#trigger-now').textContent = 'Efeito atual: ' + fx.name + (name === 'off' ? '.' : ' ' + where + '.');
+    $$('[data-effect]').forEach((b) => b.classList.toggle('active', b.dataset.effect === name && name !== 'off'));
+    state.effectName = name;
+    send(true);
+  }
+
+  function showTrigger(id, value) {
+    const peak = Math.max(state.peaks[id], value);
+    state.peaks[id] = peak;
+    $('#' + id + '-fill').style.width = (value / 255 * 100) + '%';
+    $('#' + id + '-peak').style.left = 'calc(' + (peak / 255 * 100) + '% - 3px)';
+    $('#' + id + '-label').textContent = value + ' de 255';
+    const full = peak >= 250;
+    $('#' + id + '-info').textContent = 'Máximo: ' + peak + (full ? ' (chegou no fim)' : '');
+  }
+
+  const BATTERY = (s) => {
+    if (s.charging === 2) return 'bateria cheia';
+    if (s.charging === 0 || s.charging === 1) {
+      const pct = Math.min(s.battery * 10 + 5, 100);
+      return 'bateria ~' + pct + '%' + (s.charging === 1 ? ', carregando' : '');
+    }
+    return 'bateria: erro ' + s.charging;
+  };
+
+  let lastDetailsAt = 0;
+  function onInput(e) {
+    const s = P.parseInput(e.reportId, e.data);
+    if (!s) return;
+    showTrigger('l2', s.l2);
+    showTrigger('r2', s.r2);
+    state.basicReports = s.basic;
+    const now = performance.now();
+    if (now - lastDetailsAt < 250) return;
+    lastDetailsAt = now;
+    if (s.basic) {
+      $('#raw-trigger').textContent = 'O controle está no modo de relatório simples (sem leitura dos motores).';
+      return;
+    }
+    const hex = (v) => v.toString(16).padStart(2, '0');
+    $('#raw-trigger').textContent =
+      'L2: ' + hex(s.trigLeft) + '  R2: ' + hex(s.trigRight) + '  efeito: ' + hex(s.trigEffect);
+    const t = state.transport === 'usb' ? 'pelo cabo USB' : 'pelo Bluetooth';
+    $('#details').textContent = 'Conectado ' + t + ', ' + BATTERY(s) + '.' +
+      (state.version != null ? ' Versão interna do firmware: ' + (state.version >> 8).toString(16) + '.' +
+        (state.version & 0xff).toString(16).padStart(2, '0') + '.' : '');
+  }
+
+  async function readFeature(dev, id) {
+    try { return await dev.receiveFeatureReport(id); } catch (err) { console.warn('feature', id, err); return null; }
+  }
+
+  async function open(dev) {
+    if (!dev.opened) await dev.open();
+    const outIds = dev.collections.flatMap((c) => c.outputReports.map((r) => r.reportId));
+    state.transport = outIds.includes(0x31) ? 'bt' : 'usb';
+    state.device = dev;
+    dev.addEventListener('inputreport', onInput);
+    // Reading these also switches a Bluetooth DualSense to its full reports.
+    await readFeature(dev, 0x09);
+    const fw = await readFeature(dev, 0x20);
+    state.version = fw ? P.updateVersion(fw) : null;
+    state.vibV2 = state.version != null && state.version >= 0x0224;
+    state.peaks = { l2: 0, r2: 0 };
+    const t = state.transport === 'usb' ? 'pelo cabo USB' : 'pelo Bluetooth';
+    setStatus('Conectado ' + t, 'ok');
+    $('#details').textContent = 'Conectado ' + t + '.';
+    setEnabled(true);
+    state.left = P.effectOff(); state.right = P.effectOff();
+    send(true);
+  }
+
+  async function stopAll() {
+    stopRumbleTimers();
+    state.motorLeft = 0; state.motorRight = 0;
+    state.left = P.effectOff(); state.right = P.effectOff();
+    state.effectName = 'off';
+    $('#rumble-now').textContent = 'Parado.';
+    $('#trigger-now').textContent = 'Efeito atual: sem efeito.';
+    $$('[data-effect]').forEach((b) => b.classList.remove('active'));
+    await send(true);
+  }
+
+  $('#connect').addEventListener('click', async () => {
+    try {
+      const devs = await navigator.hid.requestDevice({
+        filters: [{ vendorId: 0x054c, productId: 0x0ce6 }, { vendorId: 0x054c, productId: 0x0df2 }],
+      });
+      if (!devs.length) return;
+      await open(devs[0]);
+    } catch (err) {
+      console.warn(err);
+      setStatus('Não deu para conectar: ' + err.message, 'bad');
+    }
+  });
+
+  $('#disconnect').addEventListener('click', async () => {
+    const dev = state.device;
+    await stopAll();
+    state.device = null;
+    try { await dev.close(); } catch (_) {}
+    setEnabled(false);
+    setStatus('Nenhum controle conectado');
+    $('#details').textContent = '';
+  });
+
+  if ('hid' in navigator) {
+    navigator.hid.addEventListener('disconnect', (e) => {
+      if (e.device !== state.device) return;
+      stopRumbleTimers();
+      state.device = null;
+      setEnabled(false);
+      setStatus('O controle desconectou', 'warn');
+      $('#details').textContent = '';
+    });
+  }
+
+  $$('[data-rumble]').forEach((b) => b.addEventListener('click', () => rumble(b.dataset.rumble)));
+  $('#rumble-level').addEventListener('input', () => { $('#rumble-level-out').textContent = $('#rumble-level').value + '%'; });
+
+  $$('[data-target]').forEach((b) => b.addEventListener('click', () => {
+    state.target = b.dataset.target;
+    $$('[data-target]').forEach((x) => x.classList.toggle('active', x === b));
+    if (state.effectName !== 'off') applyEffect(state.effectName);
+  }));
+  $$('[data-effect]').forEach((b) => b.addEventListener('click', () => applyEffect(b.dataset.effect)));
+
+  $('#reset-peaks').addEventListener('click', () => {
+    state.peaks = { l2: 0, r2: 0 };
+    showTrigger('l2', 0); showTrigger('r2', 0);
+  });
+
+  $('#color').addEventListener('input', () => {
+    const h = $('#color').value;
+    state.led = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    send(false);
+  });
+  $('#light-off').addEventListener('click', () => { state.led = [0, 0, 0]; send(false); });
+
+  document.addEventListener('visibilitychange', () => { if (document.hidden && state.device) stopAll(); });
+  window.addEventListener('pagehide', () => { if (state.device) stopAll(); });
+
+  // Reconnect without the chooser when Chrome already has permission for the controller.
+  if ('hid' in navigator) {
+    navigator.hid.getDevices().then((devs) => {
+      const ds = devs.find((d) => d.vendorId === 0x054c);
+      if (ds && !state.device) open(ds).catch((err) => console.warn(err));
+    });
+  }
+})();
+</script>
+</body>
+</html>
